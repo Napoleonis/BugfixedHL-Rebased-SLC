@@ -1,0 +1,57 @@
+# This is a basic workflow to help you get started with Actions
+
+name: CI Test
+
+# Controls when the action will run. Triggers the workflow on push, pull request or manual events
+on: 
+  #push:
+  #pull_request:
+  workflow_dispatch:
+
+  # Run GitHub Actions monthly to make sure CI isn't broken
+  schedule:
+    - cron: '0 0 1 * *'
+
+# A workflow run is made up of one or more jobs that can run sequentially or in parallel
+jobs:
+  # This workflow contains a single job called "build"
+  build:
+    strategy:
+      matrix:
+        runs-on: [windows-2019, ubuntu-20.04]
+        target: [client, server]
+    
+    # The type of runner that the job will run on
+    runs-on: ${{ matrix.runs-on }}
+
+    # Steps represent a sequence of tasks that will be executed as part of the job
+    steps:
+      # Checks-out your repository under $GITHUB_WORKSPACE, so your job can access it
+      - uses: actions/checkout@v3.3.0
+        with:
+          submodules: recursive
+      
+      - name: Set up Python 3.8
+        uses: actions/setup-python@v4.5.0
+        with:
+          python-version: 3.8
+      
+      - name: Install Ubuntu packages
+        if: matrix.runs-on == 'ubuntu-20.04'
+        run: |
+          sudo dpkg --add-architecture i386
+          sudo apt update || true
+          sudo apt install -y libc6:i386 ninja-build gcc-9-multilib g++-9-multilib libssl1.1:i386 libssl-dev:i386 zlib1g-dev:i386
+      - name: Build release
+        id: build
+        run: |
+          python ./scripts/BuildRelease.py --target ${{ matrix.target }} --build-type release --vs 2019 --toolset v141_xp --linux-compiler gcc-9 --out-dir ./_build_out --cmake-args="-DWARNINGS_ARE_ERRORS=ON" --github-actions
+      - name: Run tests
+        run: |
+          cd ./_build_out/build
+          ctest -R ${{ matrix.target }} --build-config RelWithDebInfo --output-on-failure
+      - name: Upload build result
+        uses: actions/upload-artifact@v3.1.2
+        with:
+          name: ${{ steps.build.outputs.artifact_name }}
+          path: ./_build_out/BugfixedHL-*.zip
