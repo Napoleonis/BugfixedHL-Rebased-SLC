@@ -4,8 +4,8 @@ name: CI
 
 # Controls when the action will run. Triggers the workflow on push, pull request or manual events
 on: 
-  push:
-  pull_request:
+  #push:
+  #pull_request:
   workflow_dispatch:
 
   # Run GitHub Actions monthly to make sure CI isn't broken
